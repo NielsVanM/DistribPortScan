@@ -1,27 +1,68 @@
 from flask import Flask, request
 import json
+import uuid
+import requests
+import jobs
+
+class Node():
+    def __init__(self, ip, port, _id=None):
+        self.ip = ip
+        self.port = port
+
+        if _id == None:
+            _id = str(uuid.uuid4())
+    
+
+    def SendJob(self, job):
+        data = {
+            "job": job,
+            "callback": f"http://127.0.0.1:5000/cb/job?id={job.id}"
+        }
+
+        resp = requests.post(f"http://{self.ip}:{self.port}", data=json.dumps(data))
+        if resp.status_code != 200:
+            return None
+
+        job.status = jobs.ASSINGED
 
 
+class NodeManager():
+    node_list = []
 
-def RunAPI():
-    print("starting server")
-    app.run()
+    def RegisterNode(self, ip, port):
+        self.node_list.append({
+            "ip": ip,
+            "port": port
+        })
 
-app = Flask(import_name="ScanMaster")
+    def _httpRegisterNode(self):
+        return "K"
+        self.RegisterNode(
+            request.form["address"],
+            request.form["port"]
+        )
 
-nodes = []
+        return "Success"
+    
+    def _httpStatus(self):
+        return json.dumps(self.node_list)
 
-@app.route("/register_node", methods=["POST"])
-def RegisterNode():
-    d = request.form
+    def StartRegistrationListener(self, routes=[]):
+        self.app = Flask(import_name="ScanMaster")
 
-    nodes.append({
-        "address": d["address"],
-        "port": d["port"],
-    })
+        routes += [
+            # (URL, Function to exec, [Methods])
+            ("/register_node", self._httpRegisterNode, ["POST",]),
+            ("/status", self._httpStatus, ["GET",])
+        ]
 
-    return "Success"
+        for r in routes:
+            self.app.add_url_rule(
+                r[0],
+                view_func = r[1],
+                methods=r[2]
+            )
 
-@app.route("/status")
-def Status():
-        return json.dumps(nodes)
+        self.app.run()
+
+        

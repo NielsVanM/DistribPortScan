@@ -2,12 +2,21 @@ import threading
 import time
 
 from jobs import ScanJobManager
-from node_manager import RunAPI
+from node_manager import NodeManager
 
-scm = ScanJobManager()
 
-threading.Thread(target=RunAPI).start()
-threading.Thread(target=scm.GenerateJobs).start()
+def APIThread():
+    nm = NodeManager()
+
+    nm.StartRegistrationListener()
+
+def JobThread():
+    scm = ScanJobManager()
+    scm.GenerateJobs()
+
+
+threading.Thread(target=APIThread).start()
+# threading.Thread(target=JobThread).start()
 
 while True:
     try:
