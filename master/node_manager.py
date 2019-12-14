@@ -1,8 +1,12 @@
-from flask import Flask, request
 import json
+import random
 import uuid
+
 import requests
+from flask import Flask, request
+
 import jobs
+
 
 class Node():
     def __init__(self, ip, port, _id=None):
@@ -10,33 +14,39 @@ class Node():
         self.port = port
 
         if _id == None:
-            _id = str(uuid.uuid4())
-    
+            self._id = str(uuid.uuid4())
+        else:
+            self._id = _id  
 
     def SendJob(self, job):
         data = {
-            "job": job,
-            "callback": f"http://127.0.0.1:5000/cb/job?id={job.id}"
+            "job": job.toJson(),
+            "callback": f"http://127.0.0.1:5000/cb/job?id={job._id}"
         }
 
-        resp = requests.post(f"http://{self.ip}:{self.port}", data=json.dumps(data))
+        resp = requests.post(f"http://{self.ip}:{self.port}/register_job", json=data)
         if resp.status_code != 200:
             return None
 
-        job.status = jobs.ASSINGED
+        job.status = jobs.ASSIGNED
+
+    def toJson(self):
+        return {
+            "ip": self.ip,
+            "port": self.port,
+            "_id": self._id
+        }
 
 
 class NodeManager():
     node_list = []
 
     def RegisterNode(self, ip, port):
-        self.node_list.append({
-            "ip": ip,
-            "port": port
-        })
+        self.node_list.append(
+            Node(ip, port)
+        )
 
     def _httpRegisterNode(self):
-        return "K"
         self.RegisterNode(
             request.form["address"],
             request.form["port"]
@@ -45,7 +55,9 @@ class NodeManager():
         return "Success"
     
     def _httpStatus(self):
-        return json.dumps(self.node_list)
+        return json.dumps(
+            [node.toJson() for node in self.node_list]
+        )
 
     def StartRegistrationListener(self, routes=[]):
         self.app = Flask(import_name="ScanMaster")
@@ -65,4 +77,14 @@ class NodeManager():
 
         self.app.run()
 
-        
+    def SpreadJobs(self, scanManager):
+        job_list = scanManager.GetPendingJobs()
+
+        print(f"Spreading {len(job_list)} jobs to {len(self.node_list)} nodes at random.")
+
+        for job in job_list:
+            print(job)
+            if len(self.node_list) < 1:
+                return
+
+            random.choice(self.node_list).SendJob(job)

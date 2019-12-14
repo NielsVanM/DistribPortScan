@@ -5,18 +5,23 @@ from jobs import ScanJobManager
 from node_manager import NodeManager
 
 
-def APIThread():
-    nm = NodeManager()
+nm = NodeManager()
+scm = ScanJobManager()
 
+def APIThread():
     nm.StartRegistrationListener()
 
-def JobThread():
-    scm = ScanJobManager()
+def CreateJobThread():
     scm.GenerateJobs()
 
+def SpreadJobThread():
+    while True:
+        nm.SpreadJobs(scm)
+        time.sleep(10)
 
 threading.Thread(target=APIThread).start()
-# threading.Thread(target=JobThread).start()
+threading.Thread(target=CreateJobThread).start()
+threading.Thread(target=SpreadJobThread).start()
 
 while True:
     try:

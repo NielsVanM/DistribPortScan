@@ -18,11 +18,11 @@ class ScanJob():
         self.port = port
     
     def toJson(self):
-        return json.dumps({
+        return {
             "status": self.status,
             "ip": self.ip,
             "port": self.port
-        })
+        }
 
 class ScanJobManager():
     limit = 10
@@ -34,7 +34,7 @@ class ScanJobManager():
             time.sleep(1)
 
     def NewJob(self):
-        if len(self.GetPendingJobs()) > self.limit:
+        if len(self.GetUnfinishedJobs()) > self.limit:
             return
 
         sj = ScanJob(
@@ -50,6 +50,12 @@ class ScanJobManager():
         
     def GetStatus(self, _id):
         return self._job_list[_id].status
+
+    def GetUnfinishedJobs(self):
+        lst = []
+        lst += self.GetPendingJobs()
+        lst += self.GetAssignedJobs()
+        return lst
     
     def GetPendingJobs(self):
         return [value for key,value in self._job_list.items() if value.status == PENDING]
