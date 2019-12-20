@@ -3,7 +3,7 @@ import random
 import uuid
 
 import requests
-from flask import Flask, request
+from flask import Flask, request, escape
 
 import jobs
 
@@ -41,6 +41,9 @@ class Node():
 class NodeManager():
     node_list = []
 
+    def __init__(self, jobmanager):
+        self.job_manager = jobmanager
+
     def RegisterNode(self, ip, port):
         self.node_list.append(
             Node(ip, port)
@@ -56,8 +59,30 @@ class NodeManager():
     
     def _httpStatus(self):
         return json.dumps(
-            [node.toJson() for node in self.node_list]
+            escape(
+            {
+                "nodes": [node.toJson() for node in self.node_list],
+                "jobs": [j.toJson() for key, j in self.job_manager._job_list.items()]
+            }
+            )
         )
+    
+    def _jobCallback(self):
+        if not request.is_json:
+            print("Job callback is not JSON")
+        
+        _id = request.args.get("id")
+        data = request.get_json()
+        
+        if data["status"] == "success":
+            self.job_manager.SetJobStatus(_id,  jobs.FINISHED)
+            self.job_manager.SetJobData(_id, data["raw_resp"])
+            self.job_manager.SetJobProtocol
+
+        if data["status"] == "failed":
+            self.job_manager.SetJobStatus(_id, jobs.ERROR)
+
+        return "Cool"
 
     def StartRegistrationListener(self, routes=[]):
         self.app = Flask(import_name="ScanMaster")
@@ -65,7 +90,8 @@ class NodeManager():
         routes += [
             # (URL, Function to exec, [Methods])
             ("/register_node", self._httpRegisterNode, ["POST",]),
-            ("/status", self._httpStatus, ["GET",])
+            ("/status", self._httpStatus, ["GET",]),
+            ("/cb/job", self._jobCallback, ["POST"])
         ]
 
         for r in routes:
@@ -83,7 +109,6 @@ class NodeManager():
         print(f"Spreading {len(job_list)} jobs to {len(self.node_list)} nodes at random.")
 
         for job in job_list:
-            print(job)
             if len(self.node_list) < 1:
                 return
 

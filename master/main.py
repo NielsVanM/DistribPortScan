@@ -5,8 +5,10 @@ from jobs import ScanJobManager
 from node_manager import NodeManager
 
 
-nm = NodeManager()
 scm = ScanJobManager()
+scm.NewJob(addr=("178.62.120.181", 80))
+
+nm = NodeManager(scm)
 
 def APIThread():
     nm.StartRegistrationListener()
@@ -19,9 +21,18 @@ def SpreadJobThread():
         nm.SpreadJobs(scm)
         time.sleep(10)
 
-threading.Thread(target=APIThread).start()
-threading.Thread(target=CreateJobThread).start()
-threading.Thread(target=SpreadJobThread).start()
+t_api = threading.Thread(target=APIThread)
+t_api.start()
+
+t_create_job = threading.Thread(target=CreateJobThread)
+t_create_job.start()
+
+t_spread_job = threading.Thread(target=SpreadJobThread)
+t_spread_job.start()
+
+t_api.join()
+t_create_job.join()
+t_spread_job.join()
 
 while True:
     try:
